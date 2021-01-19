@@ -429,7 +429,7 @@ window.rw = window.rw || {}, window.rw.config = `+ JSON.stringify(rw.config) + "
      *
      * @param {string} user Username of the account to add text to
      * @param {string} text Wikitext to append
-     * @param {boolean} underDate If set true, the edit will be appended under this months date header, e.g. July 2020
+     * @param {string} title title of message
      * @param {string} summary The summary for this edit, excluding any RedWarn branding (this function automatically appends this)
      * @param {string} blacklist If a userpage contains this text, the edit will not be made and the text in blackListToast will be shown in a toast message. Set to null to disable.
      * @param {string} blacklistToast Toast message to show if blacklist is matched.
@@ -437,7 +437,7 @@ window.rw = window.rw || {}, window.rw.config = `+ JSON.stringify(rw.config) + "
      * @method addWikiTextToUserPage
      * @extends rw.info
      */
-    "addWikiTextToUserPage": (user, text, underDate, summary, blacklist, blacklistToast, callback) => {
+    "addWikiTextToUserPage": (user, text, title, summary, blacklist, blacklistToast, callback) => {
         if ((user == null) || (user.toLowerCase() == "undefined") || (user.toLowerCase() == "null")) {
             // Stop it from being sent to User:undefined or User:null
             // TODO: Add callback because likely bug
@@ -446,89 +446,18 @@ window.rw = window.rw || {}, window.rw.config = `+ JSON.stringify(rw.config) + "
         }
         if (callback == null) rw.ui.loadDialog.show("Saving message..."); // show load if no callback
         // Add text to a page. If underdate true, add it under a date marker
-        $.getJSON(rw.wikiAPI + "?action=query&prop=revisions&titles=User_talk:" + user + "&rvslots=*&rvprop=content&formatversion=2&format=json", latestR => {
-            // Grab text from latest revision of talk page
-            // Check if exists
-            let revisionWikitext = "";
-            if (!latestR.query.pages[0].missing) { // If page isn't missing, i.e exists
-                revisionWikitext = latestR.query.pages[0].revisions[0].slots.main.content;
-            } // else we keep to ""
-            let wikiTxtLines = revisionWikitext.split("\n");
-            let finalTxt = "";
-
-            // Check blacklist (if defined)
-            if (blacklist) {
-                if (revisionWikitext.includes(blacklist)) {
-                    // Don't continue and show toast
-                    rw.ui.loadDialog.close();
-                    rw.visuals.toast.show(blacklistToast, false, false, 5000);
-                    return;
-                }
-            }
-
-            // let's continue
-            // Returns date in == Month Year == format and matches
-            let currentDateHeading = ((d) => { return "== " + ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth()] + " " + (1900 + d.getYear()) + " ==" })(new Date);
-            let pageIncludesCurrentDate = wikiTxtLines.includes(currentDateHeading);
-            // rev13, add alt without space (i.e ==Month Year==)
-            let currentAltDateHeading = ((d) => { return "==" + ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth()] + " " + (1900 + d.getYear()) + "==" })(new Date);
-            let pageIncludesCurrentAltDate = wikiTxtLines.includes(currentAltDateHeading);
-
-            if ((!pageIncludesCurrentDate) && (pageIncludesCurrentAltDate)) { // If ==Date== is there but == Date == isn't, use ==Date== instead.
-                currentDateHeading = currentAltDateHeading;
-                pageIncludesCurrentDate = true;
-            }
-
-            // Let's continue :)
-            if (underDate) {
-                if (pageIncludesCurrentDate) {
-                    // Locate and add text in section
-
-                    // Locate where the current date section ends so we can append ours to the bottom
-                    let locationOfLastLine = wikiTxtLines.indexOf(currentDateHeading) + 1; // in case of date heading w nothing under it
-                    for (let i = wikiTxtLines.indexOf(currentDateHeading) + 1; i < wikiTxtLines.length; i++) {
-                        if (wikiTxtLines[i].startsWith("==")) {
-                            // New section
-                            locationOfLastLine = i - 1; // the line above is therefore the last
-                            console.log("exiting loop: " + wikiTxtLines[locationOfLastLine]);
-                            break; // exit the loop
-                        } else if (i == wikiTxtLines.length - 1) {
-                            // End of page, let's break and set location of last line.
-                            locationOfLastLine = i;
-                            break; // exit loop
-                        }
-                    }
-                    console.log(locationOfLastLine);
-                    if (locationOfLastLine == wikiTxtLines.length - 1) {
-                        // To prevent to end notices squishing against eachother
-                        // Same as without, but we just include the date string at bottom of page
-                        wikiTxtLines.push(["\n" + text]);
-                    } else {
-                        wikiTxtLines.splice(locationOfLastLine, 0, ["\n" + text]); // Add notice to array at correct position. Note the "" at the start is for a newline to seperate from prev content
-                    }
-                } else { // Page doesn't have current date
-                    // Same as without, but we just include the date string at bottom of page
-                    wikiTxtLines.push(["\n" + currentDateHeading + "\n" + text]);
-                }
-            } else {
-                // No need to add to date. Just shove at the bottom of the page
-                wikiTxtLines.push([text]);
-            }
-
-            // Process final string
-            wikiTxtLines.forEach(ln => finalTxt = finalTxt + ln + "\n"); // Remap to lines
-            console.log(finalTxt);
-
+        $.getJSON(rw.wikiBase + "/api/v1/User/UsersByName?query=" + user + "&limit=1", info => { // get user id
             const attemptEdit = () => {
-                // Push edit using CSRF token
-                $.post(rw.wikiAPI, {
-                    "action": "edit",
-                    "format": "json",
-                    "token": mw.user.tokens.get("csrfToken"),
-                    "title": "User_talk:" + user,
-                    "summary": summary + " [[w:en:WP:RW|(RW " + rw.version + ")]]", // summary sign here
-                    "text": finalTxt,
-                    "tags": ((rw.wikiID == "enwiki") ? "RedWarn" : null) // Only add tags if on english wikipedia
+                $.post(`https://services.fandom.com/discussion/wall/${rw.wikiSiteID}/${info.users[0].id}/threads`, {
+                    "siteId": rw.wikiSiteID,
+                    title: title,
+                    "rawContent": text,
+                    "jsonModel": `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"${text}"}]}]}`,
+                    "attachments": {
+                        "contentImages": [],
+                        "openGraphs": [],
+                        "atMentions": []
+                    }
                 }).done(dt => {
                     // We done. Check for errors, then callback appropriately
                     if (!dt.edit) {
@@ -543,11 +472,6 @@ window.rw = window.rw || {}, window.rw.config = `+ JSON.stringify(rw.config) + "
                                     // the text from the warning page here. If someone can make
                                     // a dialog with a preview of the warning, that would be great.
                                     var abWarning = (abuseFilter.info || "No information provided.").replace(/⧼(.+?)⧽/g, `(see page "MediaWiki:$1")`);
-
-                                    if (abuseFilter.id == 602) {
-                                        // https://en.wikipedia.org/wiki/MediaWiki:Abusefilter-warning-DS
-                                        var abWarning = "You are trying to alert a user to the existence of discretionary sanctions.\n\nSpecial rules (https://en.wikipedia.org/wiki/Wikipedia:Arbitration_Committee/Discretionary_sanctions#Awareness_and_alerts) govern alerts. You must not given an editor an alert if they have already received one for the same area of conflict within the last twelve months. Please now check that this editor has not already been alerted to this area of conflict in the last twelve months.";
-                                    }
 
                                     var abProceed = confirm(`Your edit was temporarily disallowed by an abuse filter in order to show you a warning:\n\n=====\n\n${abWarning}\n\n=====\n\nIf you wish to proceed, please confirm your decision.`);
 
@@ -576,8 +500,8 @@ window.rw = window.rw || {}, window.rw.config = `+ JSON.stringify(rw.config) + "
                         if (callback != null) { callback(); return; }; // callback and stop if set, else..
 
                         // Redirect to complete page
-                        let reloadNeeded = window.location.href.includes(rw.wikiBase + "/wiki/User_talk:" + user); // if we are already on the talk page we need to refresh as this would just change the hash
-                        redirect(rw.wikiBase + "/wiki/User_talk:" + user + "#noticeApplied-" + dt.edit.newrevid + "-" + dt.edit.oldrevid); // go to talk page
+                        let reloadNeeded = window.location.href.includes(rw.wikiBase + "/wiki/Message_Wall:" + user); // if we are already on the talk page we need to refresh as this would just change the hash
+                        redirect(rw.wikiBase + "/wiki/Message_Wall:" + user + "#noticeApplied-" + dt.edit.newrevid + "-" + dt.edit.oldrevid); // go to talk page
                         if (reloadNeeded) { location.reload(); }
                         // We done
                     }
