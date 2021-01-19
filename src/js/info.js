@@ -277,6 +277,9 @@ window.rw = window.rw || {}, window.rw.config = `+ JSON.stringify(rw.config) + "
      * @extends rw.info
      */
     "featureRestrictPermissionLevel": (l, callback, callbackIfNot) => {
+        if (l === "extendedconfirmed") {
+            callback();
+        }
         // Restrict feature to users in this group
         mw.user.getGroups(g => {
             let hasPerm = g.includes(l);
