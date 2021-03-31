@@ -58,7 +58,7 @@ var rw = {
      * @extends rw
      * @default '<span style="font-family:Roboto;font-weight: 300;text-shadow:2px 2px 4px #0600009e;"><span style="color:red">Red</span>Warn</span>'
      */
-    "logoHTML": `<span style="background-color: black;font-size: 25px;"><span>Red</span><span style="color: black;background-color: orange;border-radius: 5px;">Warn</span></span> Premium`, // HTML of the logo
+    "logoHTML": `<span style="background-color: black;font-size: 25px;"><span style="color:white;">Red</span><span style="color: black;background-color: orange;border-radius: 5px;">Warn</span></span> Premium`, // HTML of the logo
 
     /**
      * Defines a short version of the logo used in parts of RedWarn's UI. Please note that removing or changing this without adding attribution elsewhere may be a violation of RedWarn's license.
