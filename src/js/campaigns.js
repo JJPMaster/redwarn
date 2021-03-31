@@ -4,6 +4,17 @@ rw.campaigns = {
         // Request campaign info from User:Ed6767/redwarn/campaign.json
         $.getJSON("https://en.wikipedia.org/w/index.php?title=User:Ed6767/redwarn/campaign.json&action=raw&ctype=text/json", c=>{
             if (c.active && rw.config["campaign_"+ c.id] == null) { // only show if active and not dismissed
+                if ($("#rwPGIconContainer").length < 1) {
+                    // for other modes
+                    try {
+                        $(".mw-indicators").before(`
+                        <div id='rwPGIconContainer'></div>
+                        `); // Append our icons to the page icons with spacing
+                        $("#rwPGIconContainer").addClass("rw--upgraded");
+                    } catch {
+                        // nothing
+                    }
+                }
                 // Finally, add a notification above the string
                 $("#rwPGIconContainer").append(`
                 <div id="rwCampaignTopicon" class="icon material-icons"><span style="cursor: pointer; color:blue;">
