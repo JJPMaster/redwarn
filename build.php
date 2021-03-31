@@ -54,6 +54,7 @@ $htmlRoot = __DIR__ . DIRECTORY_SEPARATOR . "src" . DIRECTORY_SEPARATOR . "html"
 
 $magicWords = [
     "BUILDINFO" =>
+        "April Fools Build 2021". PHP_EOL .
         "Build Time: " . date('d/m/Y H:i:s', time()) . "UTC" . PHP_EOL .
         "Excecuted script: " . str_replace("\\", "/", __FILE__) . PHP_EOL .
         "User: " . get_current_user() . '@'. gethostname() .' on '. php_uname('s'),
